@@ -1,0 +1,38 @@
+- name: "configuring httpd on docker"
+  hosts: all
+  become: True
+  
+  tasks:
+     # from here we will write all the modules as per our requirement
+    - name: "Pulling httpd image from docker hub"
+      become: True
+      docker_image:
+        name: httpd
+        source: pull
+        state: present
+    
+    - name: "Creation of a directory"
+      file:
+        path: "/home/ubuntu/www/html"
+        state: directory
+    
+    - name: "copping html file"
+      copy:
+        src: "/Users/macbook/Work/DBS/Huzair/Automated_Container_Deployment_and_Administration_CA1/index.html"
+        dest: "/home/ubuntu/www/html/index.html"
+
+    - name: "firewall for port 80"
+      firewalld:
+        port: "80/tcp"
+        state: enabled
+        permanent: yes
+        immediate: yes
+
+    - name: "Launching docker container"
+      docker_container:
+        name: webserver
+        image: httpd
+        state: started
+        ports: "8081:80"
+        volumes: /home/ubuntu/www/html/index.html:/usr/local/apache2/htdocs/index.html
+        detach: true

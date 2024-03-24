@@ -1,31 +1,48 @@
 ---
-- name: Deploy Docker container with Apache service
-  hosts: target_machines
+- hosts: all
   become: true
   tasks:
-    - name: Install Docker if not already installed
-      apt:
-        name: docker.io
-        state: present
-      become: true
 
-    - name: Ensure Docker service is running
-      service:
-        name: docker
-        state: started
-      become: true
-
-    - name: Pull Apache Docker image
-      docker_image:
+    - name: Create a network with custom IPAM config
+      docker_network:
+        name: network_three
+        ipam_config:
+        - subnet: 172.168.10.0/30  
+          gateway: 172.168.10.2
+          iprange: 172.168.10.0/32
+          aux_addresses:
+            host1: 172.168.10.3
+            host2: 172.168.10.4
+    
+    - name: Pull a Docker Image
+      docker_image: 
         name: httpd
-        state: present
+        tag: latest
+        source: pull
+      register: z
+    - name: Checking Pull Status
+      debug: 
+        var: z
 
-    - name: Start Docker container
+    - name: Creating a Persistent Volume Dir
+      file:
+        path: "/home/ubuntu/DockerVolume"
+        state: directory
+
+    - name: Copying the HTML code in the Directory
+      copy: 
+        src: "templates/index.html"
+        dest: "/home/ubuntu/DockerVolume"
+
+    - name: Launching an HTTPD Container
+      when: z.failed == false
       docker_container:
-        name: apache_container
+        name: apache-server
         image: httpd
         state: started
+        exposed_ports:
+          - "80"
         ports:
-          - "80:80"
-        volumes:
-          - "/path/to/static_web_files:/usr/local/apache2/htdocs:ro"
+          - "8888:80"
+        volumes: 
+          - /home/ubuntu/DockerVolume:/usr/local/apache2/htdocs
