@@ -1,0 +1,31 @@
+---
+- name: Deploy Docker container with Apache service
+  hosts: target_machines
+  become: true
+  tasks:
+    - name: Install Docker if not already installed
+      apt:
+        name: docker.io
+        state: present
+      become: true
+
+    - name: Ensure Docker service is running
+      service:
+        name: docker
+        state: started
+      become: true
+
+    - name: Pull Apache Docker image
+      docker_image:
+        name: httpd
+        state: present
+
+    - name: Start Docker container
+      docker_container:
+        name: apache_container
+        image: httpd
+        state: started
+        ports:
+          - "80:80"
+        volumes:
+          - "/path/to/static_web_files:/usr/local/apache2/htdocs:ro"
